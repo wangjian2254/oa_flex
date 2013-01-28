@@ -48,10 +48,11 @@
 				operation.send();
 				InfoUtil.init();
 				
-				var operation1:AbstractOperation=RemoteUtil.getOperation("userhaschange");
-				operation1.addEventListener(ResultEvent.RESULT, resulthaschange);
-				RemoteUtil.openLoading();
-				operation1.send();
+//				var operation1:AbstractOperation=
+				RemoteUtil.getOperationAndResult("userhaschange",resulthaschange);
+//				operation1.addEventListener(ResultEvent.RESULT, resulthaschange);
+//				RemoteUtil.openLoading();
+//				operation1.send();
 				
 			}
 			private function resulthaschange(evt:ResultEvent, token:Object=null):void{
@@ -123,17 +124,6 @@
 			{
 				var btn:Button=event.currentTarget as Button;
 				
-				var menudata:XML;
-				if(index==1){
-					menudata=myMenu1;
-				}
-				if(index==2){
-					menudata=myMenu2;
-				}
-				if(index==3){
-					menudata=myMenu3;
-				}
-				
 				
 				if(myMenu!=null){
 					if(menuflag==btn.label){
@@ -146,7 +136,7 @@
 				
 				
 				
-				myMenu = Menu.createMenu(null,menudata, false);
+				myMenu = Menu.createMenu(null,myMenuXML.menu[index], false);
 				myMenu.labelField="@label";
 				myMenu.setStyle('font-family','黑体');
 				myMenu.setStyle('chromeColor','#dce2e7');
@@ -182,42 +172,62 @@
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'scx':
+					case 'dept':
 						c=new Scx();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'code':
+					case 'addproject':
 						c=new Code();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'site':
+					case 'projectlist':
 						c=new Site();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'order':
+					case 'svnlog':
 						c=new Order();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'orderbblr':
+					case 'addtask':
 						c=new OrderBBEdit();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'orderquery':
+					case 'tasklist':
 						c=new OrderBBQuery();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'ordermonitor':
+					case 'daily':
 						c=new OrderMonitor();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
 						break;
-					case 'orderbbdetailquery':
+					case 'weekly':
+						c=new OrderBBDetailQuery();
+						c.label=xml.attribute('label').toString();
+						c.flag=mod;
+						break;
+					case 'monthly':
+						c=new OrderBBDetailQuery();
+						c.label=xml.attribute('label').toString();
+						c.flag=mod;
+						break;
+					case 'yearly':
+						c=new OrderBBDetailQuery();
+						c.label=xml.attribute('label').toString();
+						c.flag=mod;
+						break;
+					case 'day':
+						c=new OrderBBDetailQuery();
+						c.label=xml.attribute('label').toString();
+						c.flag=mod;
+						break;
+					case 'aply':
 						c=new OrderBBDetailQuery();
 						c.label=xml.attribute('label').toString();
 						c.flag=mod;
@@ -251,48 +261,43 @@
 		]]>
 	</fx:Script>
 	<fx:Declarations>
-		<fx:XML format="e4x" id="myMenu1">
+		<fx:XML format="e4x" id="myMenuXML">
 			<root>
-				<menuitem label="部门管理" mod='dept'>
-				</menuitem>
-				<menuitem label="人员管理" mod='people'>
-				</menuitem>
-			</root>
-		</fx:XML>
-		<fx:XML format="e4x" id="myMenu2">
-			<root>
-				<menuitem label="新建项目" mod='addproject'>
-				</menuitem>
-				<menuitem label="项目列表" mod='projectlist'>
-				</menuitem>
-				<menuitem label="版本日志" mod='svnlog'>
-				</menuitem>
-				<menuitem label="新建任务" mod='addtask'>
-				</menuitem>
-				<menuitem label="任务列表" mod='tasklist'>
-				</menuitem>
+				<menu mod='myMenu1'>
+					<menuitem label="部门管理" mod='dept'>
+					</menuitem>
+					<menuitem label="人员管理" mod='people'>
+					</menuitem>
+				</menu>
+				<menu mod='myMenu2'>
+					<menuitem label="新建项目" mod='addproject'>
+					</menuitem>
+					<menuitem label="项目列表" mod='projectlist'>
+					</menuitem>
+					<menuitem label="版本日志" mod='svnlog'>
+					</menuitem>
+					<menuitem label="新建任务" mod='addtask'>
+					</menuitem>
+					<menuitem label="任务列表" mod='tasklist'>
+					</menuitem>
+				</menu>
+				<menu mod='myMenu3'>
+					<menuitem label="日自检" mod='daily'>
+					</menuitem>
+					<menuitem label="周自检" mod='weekly'>
+					</menuitem>
+					<menuitem label="月自检" mod='monthly'>
+					</menuitem>
+					<menuitem label="年自检" mod='yearly'>
+					</menuitem>
+				</menu>
+				<menu mod='myMenu4'>
+					<menuitem label="请假" mod='day'>
+					</menuitem>
+					<menuitem label="申请" mod='aply'>
+					</menuitem>
+				</menu>
 				
-			</root>
-		</fx:XML>
-		<fx:XML format="e4x" id="myMenu3">
-			<root>
-				<menuitem label="日自检" mod='daily'>
-				</menuitem>
-				<menuitem label="周自检" mod='weekly'>
-				</menuitem>
-				<menuitem label="月自检" mod='monthly'>
-				</menuitem>
-				<menuitem label="年自检" mod='yearly'>
-				</menuitem>
-				
-			</root>
-		</fx:XML>
-		<fx:XML format="e4x" id="myMenu4">
-			<root>
-				<menuitem label="请假" mod='day'>
-				</menuitem>
-				<menuitem label="申请" mod='aply'>
-				</menuitem>
 			</root>
 		</fx:XML>
 	</fx:Declarations>
@@ -328,10 +333,10 @@
 			<s:layout>
 				<s:HorizontalLayout gap="-1" verticalAlign="middle"/>
 			</s:layout>	
-			<s:Button width="130" height="29" label="基础管理" styleName="menuBtn" mouseOver="showHandler(event,1)"/>
-			<s:Button width="130" height="29" label="项目视图" styleName="menuBtn" mouseOver="showHandler(event,2)"/>
-			<s:Button width="130" height="29" label="我的自检" styleName="menuBtn" mouseOver="showHandler(event,3)"/>
-			<s:Button width="130" height="29" label="请假申请" styleName="menuBtn" mouseOver="showHandler(event,4)"/>
+			<s:Button width="130" height="29" label="基础管理" styleName="menuBtn" mouseOver="showHandler(event,0)"/>
+			<s:Button width="130" height="29" label="项目视图" styleName="menuBtn" mouseOver="showHandler(event,1)"/>
+			<s:Button width="130" height="29" label="我的自检" styleName="menuBtn" mouseOver="showHandler(event,2)"/>
+			<s:Button width="130" height="29" label="请假申请" styleName="menuBtn" mouseOver="showHandler(event,3)"/>
 		</s:Group>	
 		
 		<s:SkinnableContainer  height="28" top="77" left="0" right="0" skinClass="skins.locGroupSkin" id="locGroup" visible="true">

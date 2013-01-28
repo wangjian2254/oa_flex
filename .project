@@ -19,7 +19,7 @@
 		<link>
 			<name>bin-debug</name>
 			<type>2</type>
-			<location>/Users/wangjian2254/work/django/OASystem/static/swf</location>
+			<location>/Users/wangjian2254/work/django/OASystem/media/swf</location>
 		</link>
 	</linkedResources>
 </projectDescription>

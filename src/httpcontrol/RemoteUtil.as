@@ -42,6 +42,31 @@ package httpcontrol
 			op.addEventListener(FaultEvent.FAULT,faultEvent);
 			return op;
 		}
+		public static function getOperationAndResult(method:String,resultFn:Function,... args:Array):void{
+			getOperationAndResultAndFault(method,resultFn,null,args);
+		}
+		public static function getOperationAndResultAndFault(method:String,resultFn:Function,faultFn:Function,... args:Array):void{
+			if(!isInit){
+				init();
+				isInit=true;
+			}
+			var op:AbstractOperation= remoteObject.getOperation(method);
+			op.addEventListener(ResultEvent.RESULT,resultEvent);
+			op.addEventListener(FaultEvent.FAULT,faultEvent);
+			
+			if(resultFn!=null){
+				op.addEventListener(ResultEvent.RESULT,resultFn);
+			}
+			if(faultFn!=null){
+				op.addEventListener(FaultEvent.FAULT,faultFn);
+			}
+			openLoading();
+			if(args.length==0){
+				op.send()
+			}else{
+				op.send(args);
+			}
+		}
 		
 //		public static function send(op:AbstractOperation,... args:Array):void{
 //			openLoading();
