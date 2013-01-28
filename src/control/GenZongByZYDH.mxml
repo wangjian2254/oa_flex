@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="180" creationComplete="init()" title="{titlestr}" close="closeWin()">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			[Bindable]
+			public var titlestr:String="";
+			[Bindable]
+			public var site:int;
+			[Bindable]
+			public var orderlist_id:int;
+			
+			[Bindable]
+			public var genzongList:ArrayCollection=new ArrayCollection();
+			
+			private function closeWin():void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function init():void{
+				
+//				var myDateFormatter:DateFormatter=new DateFormatter();
+//				myDateFormatter.formatString="YYYYMMDD";
+				var op:AbstractOperation=RemoteUtil.getOperation("getZYOrderGenZongByOrderAndSite");
+				op.addEventListener(ResultEvent.RESULT,resultZYOrder);
+				RemoteUtil.openLoading();
+				op.send(orderlist_id,site);
+			}
+			
+			public function resultZYOrder(e:ResultEvent):void{
+				if(e.result.success){
+					genzongList.removeAll();
+					genzongList.addAll(new ArrayCollection(e.result.result.result as Array));
+					this.titlestr=e.result.result.title;
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<mx:DataGrid id="grid" dataProvider="{genzongList}" borderVisible="true" width="100%" height="100%">
+		<mx:columns>
+			<mx:DataGridColumn headerText="作业单号" dataField="zydh" width="200">
+			</mx:DataGridColumn>
+			<mx:DataGridColumn headerText="转入数量" dataField="zrnum">
+			</mx:DataGridColumn>
+			<mx:DataGridColumn headerText="转出数量" dataField="zcnum">
+			</mx:DataGridColumn>
+			<mx:DataGridColumn headerText="遗失数量" dataField="ysnum">
+			</mx:DataGridColumn>
+			<mx:DataGridColumn headerText="报废数量" dataField="bfnum">
+			</mx:DataGridColumn>
+			<mx:DataGridColumn headerText="剩余数量" dataField="synum">
+			</mx:DataGridColumn>
+		</mx:columns>
+	</mx:DataGrid>
+</s:TitleWindow>

@@ -1,0 +1,23 @@
+<?xmlversion="1.0"encoding="UTF-8"?>
+<services-config>
+	<services>
+		<service id = "ananasService"
+			class="flex.messaging.services.RemotingService" messageTypes="flex.messaging.messages.RemotingMessage">
+			<destination id = "ananasAmf">
+				<channels>
+					<channel ref = "ananasChannel" />
+				</channels>
+				<properties>
+					<source>*</source>
+				</properties>
+			</destination>
+			</service>
+	</services>
+	<channels>
+		<channel-definition id = "ananasChannel"
+			class="mx.messaging.channels.AMFChannel">
+			<endpoint uri = "http://127.0.0.1:8000/oa/gateway/"
+				class="flex.messaging.endpoints.AMFEndpoint" />
+		</channel-definition>
+	</channels>
+</services-config>  

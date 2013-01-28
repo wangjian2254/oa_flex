@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*" >
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumnGroup;
+			import mx.events.CollectionEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.formatters.DateFormatter;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			import mx.utils.StringUtil;
+			
+			import spark.components.CheckBox;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+				orderGenZongRefresh();
+//				orderbb=ObjectUtil.copy(InfoUtil.orderbhList) as ArrayCollection;
+				
+				//				ddbhGrid.addEventListener(CollectionEvent.COLLECTION_CHANGE,bbchange);
+				//				getAllOrderIsOpen();
+				//				orderlist=ObjectUtil.copy(InfoUtil.orderList) as ArrayCollection;
+				//				orderbhlist=ObjectUtil.copy(InfoUtil.orderbhList) as ArrayCollection;
+				//				orderbblist.removeAll();
+				//				orderbbgrid.init(null);
+//				datelr.selectedDate=new Date();
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			
+			
+			
+			//			public function getDDBHStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.openOrderBHList){
+			//					if(obj.id==item.yddbh){
+			//						return obj.ddbh;
+			//					}
+			//				}
+			//				
+			//				return "";
+			//			}
+			//			public function getZRDDBHStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.openOrderBHList){
+			//					if(obj.id==item.zrddbh){
+			//						return obj.ddbh;
+			//					}
+			//				}
+			//				
+			//				return "";
+			//			}
+			//			public function getYWZStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.siteList){
+			//					if(obj.id==item.ywz){
+			//						return obj.name;
+			//					}
+			//				}
+			//				
+			//				return "";
+			//			}
+			//			public function getZRWZStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.siteList){
+			//					if(obj.id==item.zrwz){
+			//						return obj.name;
+			//					}
+			//				}
+			//				
+			//				return "";
+			//			}
+			//			public function getScxStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.codeList){
+			//					if(obj.id==item.code){
+			//						for each(var obj1:Object in InfoUtil.scxList){
+			//							if(obj1.id==obj.scx){
+			//								return obj1.name;
+			//							}
+			//						}
+			//					}
+			//				}
+			//				
+			//				return "";
+			//			}
+			//			public function getCodeStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.codeList){
+			//					if(obj.id==item.code){
+			//						return obj.code;
+			//					}
+			//				}
+			//				return "";
+			//			}
+			//			public function getCodeNameStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.codeList){
+			//					if(obj.id==item.code){
+			//						return obj.name;
+			//					}
+			//				}
+			//				return "";
+			//			}
+			//			public function getCodeGGStr(item:Object, column:AdvancedDataGridColumn):String{
+			//				for each(var obj:Object in InfoUtil.codeList){
+			//					if(obj.id==item.code){
+			//						return obj.gg;
+			//					}
+			//				}
+			//				return "";
+			//			}
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				
+				
+				if(e.label=="关闭选中订单"){
+					closeOrderList();
+				}
+				if(e.label=='同步数据'){
+					//					InfoUtil.orderbhRefresh();
+					orderGenZongRefresh();
+				}
+			}
+			
+			public function closeOrderList():void{
+				var orderid:Array=new Array();
+				for each(var item:Object in query){
+					if(item.closedate.length==8){
+						continue;
+					}
+					if(item.selected==true){
+						orderid.push(item.orderlist_id);
+					}
+				}
+				var op:AbstractOperation=RemoteUtil.getOperation("setOrderListClose");
+				op.addEventListener(ResultEvent.RESULT,resultOrderListClose);
+				RemoteUtil.openLoading();
+				op.send(orderid);
+			}
+			public  function resultOrderListClose(e:ResultEvent):void
+			{
+				
+				if(e.result.success){
+					var orderid:Array=e.result.result as Array;
+					
+						var myDateFormatter:DateFormatter=new DateFormatter();
+						myDateFormatter.formatString="YYYYMMDD";
+						
+						for each(var id:int in orderid){
+							for each(var item:Object in query){
+								if(id==item.orderlist_id){
+									item.closedate=myDateFormatter.format(new Date());
+									break;
+								}
+							}
+						}
+//						orderGenZongRefresh();
+					grid.invalidateList();
+					
+					Alert.show("订单已经关闭","提示");
+				}
+			}
+			
+			public function queryreset():void{
+				//				cbo.setValue("");
+//				code.setValue("");
+			}
+			
+			public function orderGenZongRefresh():void{
+				//				bbchange(null);
+				var myDateFormatter:DateFormatter=new DateFormatter();
+				myDateFormatter.formatString="YYYYMMDD";
+				var op:AbstractOperation=RemoteUtil.getOperation("getOrderGenZongToday");
+				op.addEventListener(ResultEvent.RESULT,resultOrderGenZongByDate);
+				RemoteUtil.openLoading();
+//				var ddbh:Array=new Array();
+//				for each(var item:Object in orderbb){
+//					if(item.selected==true){
+//						ddbh.push(item.id);
+//					}
+//				}
+				op.send(myDateFormatter.format(new Date()),"open");
+			}
+			
+			public function resultOrderGenZongByDate(e:ResultEvent):void{
+				if(e.result.success){
+					grid.visible=true;
+					var gc:Array=new Array();
+					gc.push(grid.groupedColumns[0]);
+					grid.groupedColumns=gc;
+					headBox.removeAllElements();
+					var w:int=0;
+					var head:Object=e.result.result.head;
+					var g:AdvancedDataGridColumnGroup;
+					var cg:AdvancedDataGridColumnGroup;
+					var column:AdvancedDataGridColumn;
+					var key:String;
+					var cb:CheckBox;
+					for each(var k:String in head.index){
+						if(k=="qianxu"||k=="houxu"){
+							continue;
+							//欢迎界面不需使用
+							g=new AdvancedDataGridColumnGroup();
+							g.headerText=head[k]['group'];
+							grid.groupedColumns.push(g);
+							column=new AdvancedDataGridColumn();
+							column.dataField=head[k]["index"][0];
+							column.headerText=head[k][column.dataField];
+							column.width=90;
+							w+=column.width;
+							g.children.push(column);
+							for(var i:int=1;i<head[k]["index"].length;i++){
+								key=head[k]["index"][i];
+								if(key.indexOf("group")!=-1){
+									cg=new AdvancedDataGridColumnGroup();
+									cg.headerText=head[k][key];
+									
+									cb=new CheckBox();
+									cb.label=cg.headerText;
+									cb.selected=true;
+									cb.addEventListener(Event.CHANGE,changeHead);
+									headBox.addElement(cb);
+									
+									g.children.push(cg);
+								}else{
+									column=new AdvancedDataGridColumn();
+									column.dataField=key;
+									column.headerText=head[k][key];
+									column.width=60;
+									w+=column.width;
+									cg.children.push(column);
+								}
+							}
+							
+							continue;
+						}
+						
+						column=new AdvancedDataGridColumn();
+						column.dataField=k;
+						column.headerText=head[k];
+						column.editable=false;
+						if(column.headerText.length>5){
+							column.width=120;
+						}else{
+							column.width=90;
+						}
+						
+						w+=column.width;
+						cb=new CheckBox();
+						cb.label=column.headerText;
+						cb.selected=true;
+						cb.addEventListener(Event.CHANGE,changeHead);
+						headBox.addElement(cb);
+						
+						grid.groupedColumns.push(column);
+					}
+					grid.minWidth=w;
+					query.removeAll();
+					query.addAll(new ArrayCollection(e.result.result.query as Array));
+					for each(var obj:Object in query){
+						obj.selected=false;
+					}
+				}
+			}
+			
+			private function changeHead(e:Event):void{
+				var cb:CheckBox=e.currentTarget as CheckBox;
+				var cg:AdvancedDataGridColumnGroup;
+				var g:AdvancedDataGridColumnGroup;
+				var column:AdvancedDataGridColumn;
+				if(cb!=null){
+					for(var i:int=0;i<grid.groupedColumns.length;i++){
+						cg=grid.groupedColumns[i] as AdvancedDataGridColumnGroup;
+						column=grid.groupedColumns[i] as AdvancedDataGridColumn;
+						if(column!=null&&column.headerText==cb.label){
+							column.visible=cb.selected;
+						}
+						if(cg!=null){
+							for(var k:int=0;k<cg.children.length;k++){
+								g=cg.children[k] as AdvancedDataGridColumnGroup;
+								column=cg.children[k] as AdvancedDataGridColumn;
+								if(column!=null&&column.headerText==cb.label){
+									column.visible=cb.selected;
+								}
+								if(g!=null&&g.headerText==cb.label){
+									g.visible=cb.selected;
+									
+								}
+								
+							}
+						}
+						
+					}
+				}
+			}
+			
+			
+			
+			[Bindable]
+			public var doflag:Boolean=false;
+			
+			[Bindable]
+			public var query:ArrayCollection=new ArrayCollection();
+			
+			[Bindable]
+			public var orderisopenlist:ArrayCollection=new ArrayCollection();
+			
+			[Bindable]
+			public var orderbb:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'关闭选中订单','ico':delimg},{'label':'同步数据','ico':refreshimg}]);
+			
+			public var orderAndCodeMap:Object=new Object();
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:RadioButtonGroup id="ddquerytype" >
+			
+		</s:RadioButtonGroup>
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<!--<s:BorderContainer width="400" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+		<mx:DataGrid id="orderbhgrid" dataProvider="{InfoUtil.orderbhList}" width="100%" height="100%">
+		<mx:columns>
+		<mx:DataGridColumn dataField="ddbh" headerText="订单编号" width="150">
+		</mx:DataGridColumn>
+		<mx:DataGridColumn dataField="bzname" headerText="订单描述">
+		</mx:DataGridColumn>
+		</mx:columns>
+		</mx:DataGrid>
+		</s:BorderContainer>-->
+		<s:BorderContainer width="100%" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:layout>
+				<s:VerticalLayout gap="5" paddingTop="5" paddingLeft="5" paddingRight="5">
+					
+				</s:VerticalLayout>
+			</s:layout>
+			<s:BorderContainer left="0" top="0" height="45" width="100%" borderVisible="false" backgroundImage="{toolbgimg}">
+				<s:layout>
+					<s:BasicLayout>
+						
+					</s:BasicLayout>
+				</s:layout>
+				<mx:ButtonBar dataProvider="{buttonArr}"  doubleClickEnabled="true"  chromeColor="#faf0cc"  labelField="label" iconField="ico"  height="30" top="7" bottom="7" left="10" itemClick="clickHander(event);">
+					
+				</mx:ButtonBar>
+				
+			</s:BorderContainer>
+			<s:Scroller width="100%" height="40" left="5" right="5">
+				<s:Group width="100%" height="100%">
+					<s:BorderContainer id="headBox"  height="40" backgroundAlpha="0" borderVisible="false" >
+						<s:layout>
+							<s:HorizontalLayout gap="10" paddingLeft="10" horizontalAlign="left" verticalAlign="top">
+								
+							</s:HorizontalLayout>
+						</s:layout>
+						
+					</s:BorderContainer>
+				</s:Group>
+			</s:Scroller>
+			
+			<s:Scroller width="100%" height="100%">
+				<s:Group width="100%" height="100%">
+					<mx:AdvancedDataGrid id="grid" dataProvider="{query}" visible="false" editable="true"  height="100%">
+						<mx:groupedColumns>
+							<mx:AdvancedDataGridColumn headerText="选择" dataField="selected"  sortable="false" width="60"  editorDataField="selected" rendererIsEditor="true" >
+								<mx:itemRenderer>
+									<fx:Component>
+										<mx:HBox horizontalAlign="center">
+											<fx:Script>
+												<![CDATA[
+													public function get selected():Boolean{
+														return cb.selected;
+													}
+													public function set selected(value:Boolean):void{
+														cb.selected=value;
+													}
+												]]>
+											</fx:Script>
+											
+											<mx:CheckBox id="cb" selected="{data.selected}" >
+												
+											</mx:CheckBox>
+										</mx:HBox>
+									</fx:Component>
+								</mx:itemRenderer>
+							</mx:AdvancedDataGridColumn>
+						</mx:groupedColumns>
+					</mx:AdvancedDataGrid>	
+				</s:Group>
+			</s:Scroller>
+			
+			
+		</s:BorderContainer>
+	</s:HGroup>
+</control:CBorderContainer>

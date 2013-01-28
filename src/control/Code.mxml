@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*">
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.formatters.DateFormatter;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+				codelist=ObjectUtil.copy(InfoUtil.codeList) as ArrayCollection;
+				codegrid.init(null);
+				codegrid.sortableColumns=true;
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			
+			public function getScxStr(item:Object, column:AdvancedDataGridColumn):String{
+				var str:String="";
+				for each(var obj:Object in InfoUtil.scxList){
+					if(item.scx==obj.id){
+						return obj.name;
+					}
+				}
+				return str;
+			}
+			
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				if(e.label=="新增"){
+					add();
+				}
+				if(e.label=="修改"){
+					if(codegrid.selectedItem==null){
+						Alert.show("提示","请选择一个物料。");
+					}else{
+						show(codegrid.selectedItem);
+					}
+				}
+				if(e.label=="删除"){
+					del();
+				}
+				if(e.label=='同步数据'){
+					InfoUtil.codeRefresh(refreshScx);
+				}
+				
+				if(e.label=='导出Excel'){
+					getExcel();
+				}
+				
+			}
+			
+			public function getExcel():void{
+				if(codelist.length>0){
+					for each(var obj1:Object in codelist){
+						for each(var obj:Object in InfoUtil.scxList){
+							if(obj1.scx==obj.id){
+								obj1.scxname=obj.name;
+							}
+						}
+					}
+					var head:Object=new Object();
+					head["scxname"]="生产线";
+					head["code"]="代码";
+					head["name"]="名称";
+					head["gg"]="物料规格";
+					head["dj"]="单价";
+					
+					head["index"]=["scxname","code","name","gg","dj"];
+					
+					
+					var nohead:Object =new Object();
+					
+					var myDateFormatter:DateFormatter=new DateFormatter();
+					myDateFormatter.formatString="YYYYMMDD";
+					var op:AbstractOperation=RemoteUtil.getOperation("getCodeExcel");
+					op.addEventListener(ResultEvent.RESULT,resultwriteExcel);
+					RemoteUtil.openLoading();
+					op.send(myDateFormatter.format(new Date()),head,nohead,codelist);
+				}else{
+					Alert.show("没有数据，不能导出数据。","提示");
+				}
+				
+			}
+			public function resultwriteExcel(e:ResultEvent):void{
+				if(e.result.success){
+					var url:String=e.result.result;  
+					var request:URLRequest=new URLRequest(url);  
+					navigateToURL(request);  
+				}
+			}
+			
+			public function add():void{
+				codeid=0;
+				this.code.text="";
+				this.codename.text="";
+				this.gg.text="";
+				this.dj.text="";
+				this.scx.selectedItem=null;
+			}
+			public function del():void{
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				var item:Object;
+				for(var i:int=codelist.length-1;i>=0;i--){
+					item=codelist.getItemAt(i);
+					if(!item.selected){
+						continue;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+						scxArr.addItem(obj);
+					}
+					//					obj.name=item.name;
+					
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("delCode");
+					op.addEventListener(ResultEvent.RESULT,refresh);
+					RemoteUtil.openLoading();
+					op.send(scxArr);
+				}
+			}
+			
+			public function show(obj:Object):void{
+				codeid=obj.id;
+				this.code.text=obj.code;
+				this.codename.text=obj.name;
+				this.gg.text=obj.gg;
+				this.dj.text=obj.dj;
+				for each(var item:Object in InfoUtil.scxList){
+					if(item.id==obj.scx){
+						this.scx.selectedItem=item;
+					}
+				}
+				
+					
+			}
+			
+			public function save():void{
+				if(this.code.text==""||
+					this.codename.text==""||
+					this.gg.text==""||
+					this.dj.text==""||this.scx.selectedIndex==-1){
+					Alert.show("请填写完整信息。","提示");
+					return;
+				}
+				var obj:Object=new Object();
+				var op:AbstractOperation=RemoteUtil.getOperation("saveCode");
+				op.addEventListener(ResultEvent.RESULT,refresh);
+				if(codeid!=0){
+					obj.id=codeid;
+				}
+				obj.code=this.code.text;
+				obj.name=this.codename.text;
+				obj.gg=this.gg.text;
+				obj.dj=this.dj.text;
+				obj.scx=this.scx.selectedItem.id;
+				
+				RemoteUtil.openLoading();
+				op.send(obj);
+				
+			}
+			
+			public function refresh(e:ResultEvent):void{
+				if(e.result.success){
+					add();
+					InfoUtil.codeRefresh(refreshScx);
+				}
+			}
+			
+			public function refreshScx(e:ResultEvent):void{
+				if(e.result.success){
+					init(null);
+				}
+			}
+			
+			public function filterCodeBH():void{
+				codelist.removeAll();
+				for each (var item:Object in InfoUtil.codeList) 
+				{
+					if(item.code.toLocaleUpperCase().indexOf(filterCode.text.toLocaleUpperCase())==0){
+						codelist.addItem(item);
+					}
+				}
+				codegrid.dataProvider=codelist;
+			}
+			
+			private var codeid:int;
+			[Bindable]
+			public var codelist:ArrayCollection;
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			[Embed("assets/img/wx.png")]
+			public var wximg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'新增','ico':addimg},{'label':'修改','ico':saveimg},{'label':'同步数据','ico':refreshimg},{'label':'导出Excel','ico':wximg}]);
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<s:BorderContainer width="300" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:BorderContainer left="0" top="0" height="100%" width="100%" borderVisible="false" >
+				<s:layout>
+					<s:BasicLayout>
+						
+					</s:BasicLayout>
+				</s:layout>
+				<s:Form width="100%" id="form"  >
+					<s:FormHeading label="物料信息" textAlign="center">
+						
+					</s:FormHeading>
+					<s:FormItem label="物料代码:" textAlign="right">
+						<s:TextInput id="code" width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="物料名称:" textAlign="right">
+						<s:TextInput id="codename"  width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="物料规格:" textAlign="right">
+						<s:TextInput id="gg"   width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="单价:" textAlign="right">
+						<s:TextInput id="dj"  restrict="0-9\." width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="生产线:" textAlign="right">
+						<s:DropDownList id="scx" dataProvider="{InfoUtil.scxList}" labelField="name">
+							
+						</s:DropDownList>
+					</s:FormItem>
+					
+					<s:FormItem>
+						<s:Button label="保存" click="save()">
+							
+						</s:Button>
+					</s:FormItem>
+				</s:Form>
+			</s:BorderContainer>
+		</s:BorderContainer>
+		<s:BorderContainer width="100%" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+				<s:BorderContainer left="0" top="0" height="45" width="100%" borderVisible="false" backgroundImage="{toolbgimg}">
+					<s:layout>
+						<s:BasicLayout>
+							
+						</s:BasicLayout>
+					</s:layout>
+					<s:BorderContainer borderVisible="false" height="100%" width="100%">
+						<s:layout>
+							<s:HorizontalLayout horizontalAlign="right" verticalAlign="middle">
+								
+							</s:HorizontalLayout>
+						</s:layout>
+						<s:Label text="物料编号：">
+							
+						</s:Label>
+						<s:TextInput id="filterCode" width="200" >
+							
+						</s:TextInput>
+						<s:Button label="过滤" click="filterCodeBH()" />
+					</s:BorderContainer>
+					<mx:ButtonBar dataProvider="{buttonArr}" chromeColor="#faf0cc"  labelField="label" iconField="ico"  height="30" top="7" bottom="7" left="10" doubleClickEnabled="true" itemClick="clickHander(event);">
+						
+					</mx:ButtonBar>
+					
+				</s:BorderContainer>
+			<uicontrol:MarkAdvancedDataGrid id="codegrid" dataProvider="{codelist}"  isNewAdd="false" enabled="true" editable="false" top="46" bottom="0" right="0" left="0">
+				<uicontrol:columns>
+					<mx:AdvancedDataGridColumn headerText="选择" dataField="selected"  sortable="false" width="60"  editorDataField="selected" rendererIsEditor="true" >
+						<mx:itemRenderer>
+							<fx:Component>
+								<mx:HBox horizontalAlign="center">
+									<fx:Script>
+										<![CDATA[
+											public function get selected():Boolean{
+												return cb.selected;
+											}
+											public function set selected(value:Boolean):void{
+												cb.selected=value;
+											}
+										]]>
+									</fx:Script>
+									
+									<mx:CheckBox id="cb" selected="{data.selected}" >
+										
+									</mx:CheckBox>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemRenderer>
+					</mx:AdvancedDataGridColumn>
+					
+					<mx:AdvancedDataGridColumn headerText="生产线"  dataField="scx" width="120" labelFunction="getScxStr"  >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="代码" sortable="true"  dataField="code" width="120" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="名称"  dataField="name" width="200" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="规格"  dataField="gg"   >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="单价"  dataField="dj" >
+						
+					</mx:AdvancedDataGridColumn>
+				</uicontrol:columns>
+				
+			</uicontrol:MarkAdvancedDataGrid>
+			
+		</s:BorderContainer>
+	</s:HGroup>
+</control:CBorderContainer>

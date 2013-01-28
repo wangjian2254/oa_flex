@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*">
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+				sitelist=ObjectUtil.copy(InfoUtil.allsiteList) as ArrayCollection;
+				sitegrid.init(null);
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			
+			public function getTypeStr(item:Object, column:AdvancedDataGridColumn):String{
+				var str:String="";
+				for each(var obj:Object in siteType){
+					if(obj.id==item.type){
+						return obj.label;
+					}
+				}
+				return str;
+			}
+			public function getActionStr(item:Object, column:AdvancedDataGridColumn):String{
+				return item['isaction']?"可用":"不可用";
+			}
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				if(e.label=="新增"){
+					add();
+				}
+				if(e.label=="修改"){
+					if(sitegrid.selectedItem==null){
+						Alert.show("提示","请选择一个物料。");
+					}else{
+						show(sitegrid.selectedItem);
+					}
+				}
+				if(e.label=="删除"){
+					del();
+				}
+				if(e.label=='同步数据'){
+					InfoUtil.siteRefresh(refreshScx);
+				}
+			}
+			
+			public function add():void{
+				siteid=0;
+				this.sitename.text="";
+				this.index.value=sitelist.length;
+				this.isUsed.selected=true;
+				
+			}
+			public function del():void{
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				var item:Object;
+				for(var i:int=sitelist.length-1;i>=0;i--){
+					item=sitelist.getItemAt(i);
+					if(!item.selected){
+						continue;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+						scxArr.addItem(obj);
+					}
+					//					obj.name=item.name;
+					
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("delSite");
+					op.addEventListener(ResultEvent.RESULT,refresh);
+					RemoteUtil.openLoading();
+					op.send(scxArr);
+				}
+			}
+			
+			public function show(obj:Object):void{
+				siteid=obj.id;
+				this.sitename.text=obj.name;
+				this.index.value=obj.index;
+				this.isUsed.selected=obj.isaction;
+				for each(var item:Object in siteType){
+					if(item.id==obj.type){
+						this.type.selectedItem=item;
+						
+					}
+				}
+				
+				
+			}
+			
+			public function save():void{
+				if(this.sitename.text==""){
+					Alert.show("请填写完整信息。","提示");
+					return;
+				}
+				var obj:Object=new Object();
+				var op:AbstractOperation=RemoteUtil.getOperation("saveSite");
+				op.addEventListener(ResultEvent.RESULT,refresh);
+				if(siteid!=0){
+					obj.id=siteid;
+				}
+				obj.name=this.sitename.text;
+				obj.type=this.type.selectedItem.id;
+				obj.index=this.index.value;
+				obj.isaction=this.isUsed.selected;
+				
+				RemoteUtil.openLoading();
+				op.send(obj);
+				
+			}
+			
+			public function refresh(e:ResultEvent):void{
+				if(e.result.success){
+					add();
+					InfoUtil.siteRefresh(refreshScx);
+				}
+			}
+			
+			public function refreshScx(e:ResultEvent):void{
+				if(e.result.success){
+					init(null);
+				}
+			}
+			
+			private var siteid:int;
+			
+			[Bindable]
+			public var sitelist:ArrayCollection;
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'新增','ico':addimg},{'label':'修改','ico':saveimg},{'label':'同步数据','ico':refreshimg}]);
+			
+			[Bindable]
+			private var siteType:ArrayCollection=new ArrayCollection([{'label':'前序','id':1},{'label':'后序','id':2},{'label':'扫描出库','id':3}]);
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<s:BorderContainer width="400" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:BorderContainer left="0" top="0" height="100%" width="100%" borderVisible="false" >
+				<s:layout>
+					<s:BasicLayout>
+						
+					</s:BasicLayout>
+				</s:layout>
+				<s:Form width="100%" id="form" >
+					<s:FormHeading label="位置信息" textAlign="center">
+						
+					</s:FormHeading>
+					<s:FormItem label="位置名称:" textAlign="right">
+						<s:TextInput id="sitename" width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="位置类型:" textAlign="right">
+						<s:DropDownList id="type" dataProvider="{siteType}" selectedIndex="0" labelField="label" width="200">
+							
+						</s:DropDownList>
+					</s:FormItem>
+					<s:FormItem label="位置排序:" textAlign="right">
+						<s:NumericStepper id="index" minimum="0" maximum="999" width="200">
+							
+						</s:NumericStepper>
+					</s:FormItem>
+					<s:FormItem label="位置类型:" textAlign="right">
+						<s:CheckBox id="isUsed" label="可用"/>
+					</s:FormItem>
+					
+					
+					<s:FormItem>
+						<s:Button label="保存" click="save()">
+							
+						</s:Button>
+					</s:FormItem>
+				</s:Form>
+			</s:BorderContainer>
+		</s:BorderContainer>
+		<s:BorderContainer width="100%" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+				<s:BorderContainer left="0" top="0" height="45" width="100%" borderVisible="false" backgroundImage="{toolbgimg}">
+					<s:layout>
+						<s:BasicLayout>
+							
+						</s:BasicLayout>
+					</s:layout>
+					<mx:ButtonBar dataProvider="{buttonArr}" doubleClickEnabled="true"  chromeColor="#faf0cc"  labelField="label" iconField="ico"  height="30" top="7" bottom="7" left="10" itemClick="clickHander(event);">
+						
+					</mx:ButtonBar>
+					
+				</s:BorderContainer>
+			<uicontrol:MarkAdvancedDataGrid id="sitegrid" dataProvider="{sitelist}"  isNewAdd="false" enabled="true" editable="true" top="46" bottom="0" right="0" left="0">
+				<uicontrol:columns>
+					<mx:AdvancedDataGridColumn headerText="选择" dataField="selected"  sortable="false" width="60"  editorDataField="selected" rendererIsEditor="true" >
+						<mx:itemRenderer>
+							<fx:Component>
+								<mx:HBox horizontalAlign="center">
+									<fx:Script>
+										<![CDATA[
+											public function get selected():Boolean{
+												return cb.selected;
+											}
+											public function set selected(value:Boolean):void{
+												cb.selected=value;
+											}
+										]]>
+									</fx:Script>
+									
+									<mx:CheckBox id="cb" selected="{data.selected}" >
+										
+									</mx:CheckBox>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemRenderer>
+					</mx:AdvancedDataGridColumn>
+					
+					<mx:AdvancedDataGridColumn headerText="名称"  dataField="name" editable="false"  >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="类型"  dataField="type" editable="false" labelFunction="getTypeStr"  >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="排序"  dataField="index" editable="false"  >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="是否启用"  dataField="isaction" editable="false" labelFunction="getActionStr"  >
+						
+					</mx:AdvancedDataGridColumn>
+					
+				</uicontrol:columns>
+				
+			</uicontrol:MarkAdvancedDataGrid>
+			
+		</s:BorderContainer>
+	</s:HGroup>
+</control:CBorderContainer>

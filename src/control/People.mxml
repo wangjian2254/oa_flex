@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*">
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+				peoplelist=ObjectUtil.copy(InfoUtil.userList) as ArrayCollection;
+				peopgrid.init(null);
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			public function getPermissionsStr(item:Object, column:AdvancedDataGridColumn):String{
+				var str:String="";
+				for each(var obj:Object in item.user_permissions){
+					str+=obj.name+"、"
+				}
+				return str;
+			}
+			public function getIsActiveStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(item.is_active){
+					return "可用";
+				}
+				return "禁用";
+			}
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				if(e.label=="新增"){
+					add();
+				}
+				if(e.label=="修改"){
+					if(peopgrid.selectedItem==null){
+						Alert.show("提示","请选择一条记录。");
+					}else{
+						show(peopgrid.selectedItem);
+					}
+				}
+				if(e.label=="删除"){
+					del();
+				}
+				if(e.label=='同步数据'){
+					InfoUtil.userRefresh(refreshScx);
+				}
+				
+			}
+			
+			public function add():void{
+				userid=0;
+				this.username.text="";
+				this.password.text="";
+				this.rpassword.text="";
+				this.isUsed.selected=true;
+				
+				this.xing.text="";
+//				this.ming.text="";
+					this.user_add.selected=false;
+					this.user_update.selected=false;
+					this.user_view.selected=false;
+					this.user_change.selected=false;
+			}
+			public function del():void{
+				var userArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				var item:Object;
+				for(var i:int=peoplelist.length-1;i>=0;i--){
+					item=peoplelist.getItemAt(i);
+					if(!item.selected){
+						continue;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+						userArr.addItem(obj);
+					}
+					//					obj.name=item.name;
+					
+				}
+				if(userArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("delUser");
+					op.addEventListener(ResultEvent.RESULT,refresh);
+					RemoteUtil.openLoading();
+					op.send(userArr);
+				}
+			}
+			
+			public function show(obj:Object):void{
+				userid=obj.id;
+				this.username.text=obj.username;
+				this.isUsed.selected=obj.is_active;
+				this.password.text="";
+				this.rpassword.text="";
+				
+				this.xing.text=obj.last_name;
+//				this.ming.text=obj.first_name;
+				this.user_add.selected=false;
+				this.user_update.selected=false;
+				this.user_view.selected=false;
+				this.user_change.selected=false;
+				for each(var item:Object in obj.user_permissions){
+					if(item.codename=="user_add"){
+						this.user_add.selected=true;
+					}
+					if(item.codename=="user_update"){
+						this.user_update.selected=true;
+					}
+					if(item.codename=="user_view"){
+						this.user_view.selected=true;
+					}
+					if(item.codename=="user_change"){
+						this.user_change.selected=true;	
+					}
+				}
+				
+				
+			}
+			
+			public function save():void{
+				if(this.username.text==""||
+					this.xing.text==""){
+					Alert.show("请填写完整信息。","提示");
+					return;
+				}
+				var obj:Object=new Object();
+				var op:AbstractOperation=RemoteUtil.getOperation("saveUser");
+				op.addEventListener(ResultEvent.RESULT,refresh);
+				if(userid!=0){
+					obj.id=userid;
+				}else{
+					if(this.password.text==""||this.password.text!=this.rpassword.text){
+						Alert.show("密码和确认密码要一致。","提示");
+					}
+				}
+				obj.username=this.username.text;
+				if(this.password.text!=""&&this.password.text==this.rpassword.text){
+					obj.password=this.password.text;
+				}
+				obj.last_name=this.xing.text;
+				obj.is_active=this.isUsed.selected;
+//				obj.first_name=this.ming.text;
+				obj.permissions=[];
+				if(this.user_add.selected){
+					obj.permissions.push("user_add");
+				}
+				if(this.user_view.selected){
+					obj.permissions.push("user_view");
+				}
+				if(this.user_update.selected){
+					obj.permissions.push("user_update");
+				}
+				if(this.user_change.selected){
+					obj.permissions.push("user_change");
+				}
+				RemoteUtil.openLoading();
+				op.send(obj);
+				
+			}
+			
+			public function refresh(e:ResultEvent):void{
+				if(e.result.success){
+					add();
+					InfoUtil.userRefresh(refreshScx);
+				}
+			}
+			
+			public function refreshScx(e:ResultEvent):void{
+				if(e.result.success){
+					init(null);
+				}
+			}
+			
+			[Bindable]
+			private var userid:int;
+			
+			[Bindable]
+			public var peoplelist:ArrayCollection;
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'新增','ico':addimg},{'label':'修改','ico':saveimg},{'label':'同步数据','ico':refreshimg}]);
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<s:BorderContainer width="400" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:BorderContainer left="0" top="0" height="100%" width="100%" borderVisible="false" >
+				<s:layout>
+					<s:BasicLayout>
+						
+					</s:BasicLayout>
+				</s:layout>
+				<s:Form width="100%" id="form" >
+					<s:FormHeading label="用户信息" textAlign="center">
+						
+					</s:FormHeading>
+					<s:FormItem label="用户名:" textAlign="right">
+						<s:TextInput id="username" width="200" enabled="{userid==0}">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="密码:" textAlign="right">
+						<s:TextInput id="password"  width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="确认密码:" textAlign="right">
+						<s:TextInput id="rpassword"  width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					<s:FormItem label="姓名:" textAlign="right">
+						<s:TextInput id="xing"  width="200">
+							
+						</s:TextInput>
+					</s:FormItem>
+					
+					<s:FormItem label="权限:" textAlign="right">
+						<s:CheckBox label="日报表录入" id="user_add">
+						</s:CheckBox>
+						<s:CheckBox label="日报表修改" id="user_update">
+						</s:CheckBox>
+						<s:CheckBox label="查询人员" id="user_view">
+						</s:CheckBox>
+						<s:CheckBox label="维护人员" id="user_change">
+						</s:CheckBox>
+					</s:FormItem>
+					<s:FormItem label="启用:" textAlign="right">
+						<s:CheckBox id="isUsed" label="可用"/>
+					</s:FormItem>
+					<s:FormItem>
+						<s:Button label="保存" click="save()">
+							
+						</s:Button>
+					</s:FormItem>
+				</s:Form>
+			</s:BorderContainer>
+		</s:BorderContainer>
+		<s:BorderContainer width="100%" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+				<s:BorderContainer left="0" top="0" height="45" width="100%" borderVisible="false" backgroundImage="{toolbgimg}">
+					<s:layout>
+						<s:BasicLayout>
+							
+						</s:BasicLayout>
+					</s:layout>
+					<mx:ButtonBar dataProvider="{buttonArr}" doubleClickEnabled="true"  chromeColor="#faf0cc"  labelField="label" iconField="ico"  height="30" top="7" bottom="7" left="10" itemClick="clickHander(event);">
+						
+					</mx:ButtonBar>
+					
+				</s:BorderContainer>
+			<uicontrol:MarkAdvancedDataGrid id="peopgrid" dataProvider="{peoplelist}"  isNewAdd="false" enabled="true" editable="false" top="46" bottom="0" right="0" left="0">
+				<uicontrol:columns>
+					<mx:AdvancedDataGridColumn headerText="选择" dataField="selected"  sortable="false" width="60"  editorDataField="selected" rendererIsEditor="true" >
+						<mx:itemRenderer>
+							<fx:Component>
+								<mx:HBox horizontalAlign="center">
+									<fx:Script>
+										<![CDATA[
+											public function get selected():Boolean{
+												return cb.selected;
+											}
+											public function set selected(value:Boolean):void{
+												cb.selected=value;
+											}
+										]]>
+									</fx:Script>
+									
+									<mx:CheckBox id="cb" selected="{data.selected}" >
+										
+									</mx:CheckBox>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemRenderer>
+					</mx:AdvancedDataGridColumn>
+					
+					<mx:AdvancedDataGridColumn headerText="用户名"  dataField="username" width="120" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="姓名"  dataField="last_name" width="60" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="是否可用"  dataField="is_active" labelFunction="getIsActiveStr" width="120" >
+						
+					</mx:AdvancedDataGridColumn>
+					
+					<mx:AdvancedDataGridColumn headerText="权限"  dataField="permissions" labelFunction="getPermissionsStr" >
+						
+					</mx:AdvancedDataGridColumn>
+				</uicontrol:columns>
+				
+			</uicontrol:MarkAdvancedDataGrid>
+			
+		</s:BorderContainer>
+	</s:HGroup>
+</control:CBorderContainer>

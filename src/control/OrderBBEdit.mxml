@@ -1,0 +1,1421 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*" >
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			import mx.utils.StringUtil;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+				
+//				orderlist=ObjectUtil.copy(InfoUtil.orderList) as ArrayCollection;
+//				orderbhlist=ObjectUtil.copy(InfoUtil.orderbhList) as ArrayCollection;
+				orderbblist.removeAll();
+				orderbbgrid.init(null);
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			
+			
+			
+			
+			public function getDDBHStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(InfoUtil.orderlistbhObj.hasOwnProperty("orderlist"+item.yddbh)){
+					return InfoUtil.orderlistbhObj["orderlist"+item.yddbh];
+				}
+				for each(var obj:Object in InfoUtil.openOrderList){
+					if(obj.id==item.yddbh){
+						InfoUtil.orderlistbhObj["orderlist"+item.yddbh]=obj.ddbhstr;
+						return obj.ddbhstr;
+					}
+				}
+				
+				return "";
+			}
+			public function getZRDDBHStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(InfoUtil.orderlistbhObj.hasOwnProperty("orderlist"+item.zrddbh)){
+					return InfoUtil.orderlistbhObj["orderlist"+item.zrddbh];
+				}
+				for each(var obj:Object in InfoUtil.openOrderList){
+					if(obj.id==item.zrddbh){
+						InfoUtil.orderlistbhObj["orderlist"+item.zrddbh]=obj.ddbhstr;
+						return obj.ddbh;
+					}
+				}
+				
+				return "";
+			}
+			public function getYWZStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.siteList){
+					if(obj.id==item.ywz){
+						return obj.name;
+					}
+				}
+				
+				return "";
+			}
+			public function getZRWZStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.siteList){
+					if(obj.id==item.zrwz){
+						return obj.name;
+					}
+				}
+				
+				return "";
+			}
+			public function getScxStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						for each(var obj1:Object in InfoUtil.scxList){
+							if(obj1.id==obj.scx){
+								return obj1.name;
+							}
+						}
+					}
+				}
+				
+				return "";
+			}
+			public function getCodeStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(InfoUtil.codeObj.hasOwnProperty("code"+item.code)){
+					return InfoUtil.codeObj["code"+item.code];
+				}
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						InfoUtil.codeObj["code"+item.code]=obj.code;
+						return obj.code;
+					}
+				}
+				return "";
+			}
+			public function getCodeNameStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(InfoUtil.codeObj.hasOwnProperty("codename"+item.code)){
+					return InfoUtil.codeObj["codename"+item.code];
+				}
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						InfoUtil.codeObj["codename"+item.code]=obj.name;
+						return obj.name;
+					}
+				}
+				return "";
+			}
+			public function getCodeGGStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(InfoUtil.codeObj.hasOwnProperty("codegg"+item.code)){
+					return InfoUtil.codeObj["codegg"+item.code]
+				}
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						InfoUtil.codeObj["codegg"+item.code]=obj.gg;
+						return obj.gg;
+					}
+				}
+				return "";
+			}
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				
+				if(e.label=="新增"){
+					orderbblist.removeAll();
+					this.lsh.text="";
+				}
+				if(e.label=="保存"){
+					save();
+				}
+				if(e.label=="删除"){
+					del();
+				}
+				if(e.label=="同步订单编号和物料"){
+					InfoUtil.scxRefresh();
+					InfoUtil.codeRefresh();
+					InfoUtil.openOrderRefresh();
+
+				}
+				if(e.label=='同步数据'){
+					if(this.lsh.text!=""){
+						getOrderBBByLSH(this.lsh.text);
+					}
+					
+									}
+			}
+			
+			public function del():void{
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				var item:Object;
+				for(var i:int=orderbblist.length-1;i>=0;i--){
+					item=orderbblist.getItemAt(i);
+					if(!item.selected){
+						continue;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+						scxArr.addItem(obj);
+					}else{
+						orderbblist.removeItemAt(orderbblist.getItemIndex(item));
+					}
+					//					obj.name=item.name;
+					
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("delOrderBB");
+					op.addEventListener(ResultEvent.RESULT,refreshDel);
+					RemoteUtil.openLoading();
+					op.send(scxArr);
+				}
+			}
+			
+			public function check():Boolean{
+				var obj:Object;
+				for(var ii:int=0;ii<orderbblist.length;ii++){
+					
+					obj=orderbblist.getItemAt(ii);
+					obj['num']=ii+1;
+				}
+				var co:int=1;
+				var flag:Boolean=false;
+				var ydd:Boolean=false;
+				var zdd:Boolean=false;
+				var msg:String='';
+				for(var i:int=0;i<orderbblist.length;i++){
+					flag=false;
+					ydd=false;
+					zdd=false;
+					obj=orderbblist.getItemAt(i);
+					msg="第 "+(i+1)+" 行 ：";
+					if(!obj.hasOwnProperty("yddbh")||obj["yddbh"]==""||obj["yddbh"]==null){
+						Alert.show(msg+"源订单编号不能为空","提示");
+						co=1;
+						break;
+					}
+					if(!obj.hasOwnProperty("code")||obj["code"]==""||obj["code"]==null){
+						Alert.show(msg+"物料不能为空","提示");
+						co=2;
+						break;
+					}
+					if(!obj.hasOwnProperty("yzydh")||obj["yzydh"]==""||obj["yzydh"]==null){
+						Alert.show(msg+"源作业单编号不能为空","提示");
+						co=6;
+						break;
+					}
+					if(!obj.hasOwnProperty("zrddbh")||obj["zrddbh"]==""||obj["zrddbh"]==null){
+						Alert.show(msg+"转入订单编号不能为空","提示");
+						co=10;
+						break;
+					}
+					if((obj["yddbh"]==obj["zrddbh"])&&(obj["ywz"]==obj["zrwz"])){
+						Alert.show(msg+"源订单编号 与 转入订单编号 相同，且 转出位置 与 转入位置 也相同了。","提示");
+						break;
+					}
+					co=0;
+					if((!obj.hasOwnProperty("ywz")||obj["ywz"]==""||obj["ywz"]==null)&&(!obj.hasOwnProperty("zrwz")||obj["zrwz"]==""||obj["zrwz"]==null)){
+						Alert.show(msg+"源位置与转入位置不能同时为空","提示");
+						break;
+					}
+					if((!obj.hasOwnProperty("ywznum")||obj["ywznum"]==""||obj["ywznum"]==null)&&(!obj.hasOwnProperty("zrwznum")||obj["zrwznum"]==""||obj["zrwznum"]==null)){
+						Alert.show(msg+"转出数量与转入数量不能同时为空","提示");
+						break;
+					}
+					if(!obj.hasOwnProperty("ywz")||obj["ywz"]==""||obj["ywz"]==null){
+						
+					}else{
+						if(obj["ywznum"]!=obj["zrwznum"]+obj["bfnum"]+obj["ysnum"]){
+							Alert.show(msg+"转出数量不等于转入数量+报废数量+遗失数量+源位置剩余数量","提示");
+							break;
+						}
+					}
+					
+					
+					for each(var item:Object in InfoUtil.openOrderList){
+						if(item.id==obj.yddbh){
+							if(item.code==obj.code){
+								ydd=true;
+								obj.yorder=item.id;
+							}
+						}
+						if(item.code==obj.code){
+							if(item.id==obj.zrddbh){
+								zdd=true;
+								obj.zrorder=item.id;
+							}
+						}
+						if(ydd&&zdd){
+							break;
+						}
+					}
+					if(!ydd){
+						Alert.show(msg+"源订单没有选定的物料。","提示");
+						break;
+					}
+					if(!zdd){
+						Alert.show(msg+"转入订单没有选定的物料。","提示");
+						break;
+					}
+					flag=true;
+				}
+				orderbbgrid.scrollToIndex(i);
+				orderbbgrid.selectedIndex=i;
+				if(co!=0){
+					var v:Object=new Object;
+					v.columnIndex=co+1;
+					v.rowIndex=i;
+					orderbbgrid.editedItemPosition=v;
+				}
+				orderbbgrid.invalidateList();
+				return flag;
+			}
+			
+			
+			public function save():void{
+				if(!check()){
+					orderbblist.refresh();
+					return;
+				}
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				for each(var item:Object in orderbblist){
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+					}
+					obj.yorder=item.yorder;
+					obj.zrorder=item.zrorder;
+					obj.yzydh=item.yzydh;
+					if(item.hasOwnProperty("ywz")&&item.ywznum>0){
+						obj.ywz=item.ywz;
+						obj.ywznum=item.ywznum;
+					}
+					if(item.hasOwnProperty("zrwz")&&item.zrwz!=""&&item.zrwz!=null&&item.zrwz>0){
+						obj.zrwz=item.zrwz;
+						obj.zrwznum=item.zrwznum;
+					}
+					
+					
+					obj.bfnum=item.bfnum;
+					obj.ysnum=item.ysnum;
+					obj.ywzsynum=item.ywzsynum;
+					obj.bztext=item.bztext;
+					scxArr.addItem(obj);
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("saveOrderBB");
+					op.addEventListener(ResultEvent.RESULT,refreshSave);
+					RemoteUtil.openLoading();
+					op.send(scxArr,this.lsh.text);
+				}
+				
+				
+			}
+			public function trimStr(str:String):String{
+				var _str:String=str;               
+				while(_str.substr(0,1)==" "){
+					_str=_str.substr(1);
+				}
+				while(_str.substr(-1,1)==" "){
+					_str=_str.substr(0,_str.length-1);
+				}
+				return _str;
+			}
+			public function addItem():void{
+				var codeStr:String=this.codeArea.text.replace("\r");
+//				Alert.show(codeStr);
+				var item:Object;
+				for each(var code:String in codeStr.split("\n")){
+					code=trimStr(code).toLowerCase();
+					item=new Object();
+					for each(var obj:Object in InfoUtil.codeList){
+						if(obj.code.toLowerCase()==code){
+							item.code=obj.id;
+							item.codestr=obj.code;
+							item.codename=obj.name;
+							item.codegg=obj.gg;
+							item.isModfy=true;
+							item.selected=false;
+							item.yddbh="";
+							item.zrddbh="";
+							item.ywz="";
+							item.ywznum=0;
+							item.zrwz="";
+							item.zrwznum=0;
+							item.bfnum=0;
+							item.ysnum=0;
+							item.ywzsynum=0;
+							item.bztext="";
+							orderbblist.addItem(item);
+							break;
+						}
+					}
+				}
+				this.codeArea.text="";
+			}
+			
+			public function getOrderBBByLSH(lsh:String):void{
+				var op:AbstractOperation=RemoteUtil.getOperation("getOrderBBByLsh");
+				op.addEventListener(ResultEvent.RESULT,resultOrderBBByLSH);
+				RemoteUtil.openLoading();
+				op.send(lsh);
+			}
+			
+			public function resultOrderBBByLSH(e:ResultEvent):void{
+				var result:Object=e.result;
+				if(result.success==true){
+					orderbblist.removeAll();
+					orderbblist.addAll(new ArrayCollection(result.result.list as Array));
+					var num:int=0;
+					for each(var item:Object in InfoUtil.openOrderList){
+						for each(var obj:Object in orderbblist){
+							if(obj.yorder==item.id){
+								obj.yddbh=item.id;
+								obj.code=item.code;
+								for each(var obj1:Object in InfoUtil.codeList){
+									if(obj.code==obj1.id){
+										InfoUtil.codeObj["code"+obj1.id]=obj1.code;
+										obj.codestr=obj1.code;
+										obj.codename=obj1.name;
+										obj.codegg=obj1.gg;
+									}
+								}
+								num++;
+							}
+							if(obj.zrorder==item.id){
+								obj.zrddbh=item.id;
+								num++
+							}
+						}
+						if(num==orderbblist.length*2){
+							break;
+						}
+					}
+					orderbbgrid.init(null);
+					this.lsh.text=result.result.lsh;
+				}
+			}
+			
+			public function refreshDel(e:ResultEvent):void{
+				if(e.result.success){
+					var item:Object;
+					for each(var id:int in e.result.result){
+						
+						for(var i:int=orderbblist.length-1;i>=0;i--){
+							item=orderbblist.getItemAt(i);
+							if(item.id==id){
+								orderbblist.removeItemAt(i);
+							}
+						}
+					}
+				}
+			}
+			public function refreshSave(e:ResultEvent):void{
+				if(e.result.success){
+					Alert.show("日报表保存成功。","提示");
+					
+					//保存成功后不再 重新加载 20130120
+					//getOrderBBByLSH(e.result.result);
+					//保存成功后，进入新增状态
+					orderbblist.removeAll();
+					this.lsh.text="";
+				}else{
+					if(e.result.result!=false&&e.result.result.hasOwnProperty("order")){
+						var rowIndex:int=0;
+						var item:Object;
+						for(;rowIndex<orderbblist.length;rowIndex++){
+							item=orderbblist.getItemAt(rowIndex);
+							if(item.yorder==e.result.result.order&&item.ywz==e.result.result.wz){
+								orderbbgrid.scrollToIndex(rowIndex);
+								orderbbgrid.selectedIndex=rowIndex;
+								return;
+							}
+							if(item.zrorder==e.result.result.order&&item.zrwz==e.result.result.wz){
+								orderbbgrid.scrollToIndex(rowIndex);
+								orderbbgrid.selectedIndex=rowIndex;
+								return;
+							}
+						}
+					}
+				}
+			}
+			
+//			public function getAllOrderIsOpen():void{
+//				var op:AbstractOperation=RemoteUtil.getOperation("getOrderIsOpen");
+//				op.addEventListener(ResultEvent.RESULT,resultAllOrderIsOpen);
+//				RemoteUtil.openLoading();
+//				op.send();
+//			}
+//			public function resultAllOrderIsOpen(e:ResultEvent):void{
+//				if(e.result.success){
+//					orderisopenlist.removeAll();
+//					orderisopenlist.addAll(new ArrayCollection(e.result.result as Array));
+//				}
+//			}
+			
+			[Bindable]
+			public var doflag:Boolean=false;
+			
+			[Bindable]
+			public var orderbblist:ArrayCollection=new ArrayCollection();
+			
+			[Bindable]
+			public var orderisopenlist:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'新增','ico':addimg},{'label':'保存','ico':saveimg},{'label':'删除','ico':delimg},{'label':'同步数据','ico':refreshimg},{'label':'同步订单编号和物料','ico':refreshimg}]);
+			
+//			public var orderAndCodeMap:Object=new Object();
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<!--<s:BorderContainer width="400" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<mx:DataGrid id="orderbhgrid" dataProvider="{InfoUtil.orderbhList}" width="100%" height="100%">
+				<mx:columns>
+					<mx:DataGridColumn dataField="ddbh" headerText="订单编号" width="150">
+					</mx:DataGridColumn>
+					<mx:DataGridColumn dataField="bzname" headerText="订单描述">
+					</mx:DataGridColumn>
+				</mx:columns>
+			</mx:DataGrid>
+		</s:BorderContainer>-->
+		<s:BorderContainer width="100%" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:layout>
+				<s:VerticalLayout gap="5">
+					
+				</s:VerticalLayout>
+			</s:layout>
+				<s:BorderContainer left="0" top="0" height="45" width="100%" borderVisible="false" backgroundImage="{toolbgimg}">
+					<s:layout>
+						<s:BasicLayout>
+							
+						</s:BasicLayout>
+					</s:layout>
+					<mx:ButtonBar dataProvider="{buttonArr}" doubleClickEnabled="true"  chromeColor="#faf0cc"  labelField="label" iconField="ico"  height="30" top="7" bottom="7" left="10" itemClick="clickHander(event);">
+						
+					</mx:ButtonBar>
+					
+				</s:BorderContainer>
+				<s:BorderContainer id="codeAreaContainer" left="5" right="5" top="0" height="60" backgroundAlpha="0" borderVisible="false" >
+					<s:layout>
+						<s:HorizontalLayout gap="5" paddingLeft="10" horizontalAlign="left" verticalAlign="top">
+							
+						</s:HorizontalLayout>
+					</s:layout>
+					<s:Label text="物料代号:"/>
+					<s:TextArea id="codeArea" width="400" height="100%" focusIn="codeAreaContainer.height=240;" focusOut="codeAreaContainer.height=60;">
+						
+					</s:TextArea>
+					<s:Button label="提交" click="addItem()"/>
+				</s:BorderContainer>
+				<s:BorderContainer left="5" right="5" top="0" width="100%" height="25" backgroundAlpha="0" borderVisible="false" >
+					<s:layout>
+						<s:HorizontalLayout gap="5" paddingRight="10" horizontalAlign="right" verticalAlign="middle">
+							
+						</s:HorizontalLayout>
+					</s:layout>
+					<s:Label text="流水号:"/>
+					<s:TextInput id="lsh" enabled="false">
+						
+					</s:TextInput>
+				</s:BorderContainer>
+			<uicontrol:MarkAdvancedDataGrid id="orderbbgrid" dataProvider="{orderbblist}"  isNewAdd="false" enabled="true" editable="true" width="100%" height="100%">
+				<uicontrol:groupedColumns>
+					<mx:AdvancedDataGridColumn headerText="选择" dataField="selected"  sortable="false" width="60"  editorDataField="selected" rendererIsEditor="true" >
+						<mx:itemRenderer>
+							<fx:Component>
+								<mx:HBox horizontalAlign="center">
+									<fx:Script>
+										<![CDATA[
+											public function get selected():Boolean{
+												return cb.selected;
+											}
+											public function set selected(value:Boolean):void{
+												cb.selected=value;
+											}
+										]]>
+									</fx:Script>
+									
+									<mx:CheckBox id="cb" selected="{data.selected}" >
+										
+									</mx:CheckBox>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemRenderer>
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="序号" dataField="num"  sortable="false" width="60"  editable="false">
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="源订单编号"  dataField="yddbh" editorDataField="data" labelFunction="getDDBHStr" width="100"   >
+						<mx:itemEditor>
+							<fx:Component>
+								<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+									<fx:Script>
+										<![CDATA[
+											import mx.collections.ArrayCollection;
+											import mx.controls.dataGridClasses.DataGridListData;
+											import mx.controls.listClasses.BaseListData;
+											import mx.core.INavigatorContent;
+											
+											import util.InfoUtil;
+											private var _listData:DataGridListData;
+											// Define a property for returning the new value to the cell.
+											[Bindable]
+											private var _value:Object;  
+											
+											[Bindable]
+											private var list:ArrayCollection=new ArrayCollection();
+											
+											// Implement the drawFocus() method for the VBox.
+											override public function drawFocus(draw:Boolean):void {
+												//											outerDocument.getMacAll();
+												cbo.setFocus();
+												cbo.open();
+												
+											}
+											
+											public function refresh():void{
+												if(_value.hasOwnProperty("code")&&InfoUtil.codeToBHlistObj.hasOwnProperty("code"+_value.code)){
+													list=InfoUtil.codeToBHlistObj["code"+_value.code];
+													return;
+												}
+												list.removeAll();
+												var ddbh:String=",";
+												for each(var item:Object in InfoUtil.openOrderList){
+													if(!_value.hasOwnProperty("code")||_value.code==""||_value.code==null||_value.code==item.code){
+														if(ddbh.indexOf(","+item.ddbh+",")==-1){
+															list.addItem(item);
+														}
+														
+													}else{
+														continue;
+													}
+													ddbh+=item.ddbh+",";
+												}
+												InfoUtil.codeToBHlistObj["code"+_value.code]=list;
+											}
+											
+											override public function get data():Object {
+												if(cbo==null){
+													return super.data;
+												}else{
+													if(cbo.selectedIndex==-1){
+														for each(var it:Object in cbo.dataProvider){
+															if(it[cbo.labelField]==cbo.data||it[cbo.valueField]==cbo.data){
+																return it[cbo.valueField]
+															}
+														}
+														return null;
+													}
+													return cbo.data;
+												}
+											}            
+											
+											override public function set data(value:Object):void {
+												super.data=value[_listData.dataField];
+												_value=value;
+												changeFilterValue();
+												cbo.setValue(value[_listData.dataField]);
+												
+//												
+												
+											} 
+											
+											public function get listData():BaseListData
+											{
+												return _listData;
+											}
+											
+											public function set listData(value:BaseListData):void
+											{
+												_listData = DataGridListData(value);
+												cbo.listData = DataGridListData(value);
+											}
+											
+											public function changeCode():void{
+												if(cbo.selectedItem==null){
+													return;
+												}
+//												_value['ddbh']=cbo.selectedItem.ddbh;
+//												if(_value['code']!=cbo.selectedItem.code){
+//													_value['code']=cbo.selectedItem.code;
+//												}
+//												
+												if(_value['zrddbh']==null||_value['zrddbh']==""){
+													_value["zrddbh"]=cbo.selectedItem.id;
+												}
+//												_value['dj']=cbo.selectedItem.dj;
+//												if(_value['num']==""){
+//													_value['cz']=0
+//												}else{
+//													_value['cz']=cbo.selectedItem.dj*_value['num'];
+//												}
+												
+											}
+											
+											public function changeFilterValue():void{
+												if(cbo.filtervalue!=_value.code){
+													cbo.filtervalue=_value.code;
+													refresh();
+												}
+											}
+											
+										]]>
+									</fx:Script>
+									<uicontrol:FliterComboBox id="cbo"  dataProvider="{list}"   labelField="ddbhstr" valueField="id" change="changeCode()" height="{this.height}" width="{this.width}" styleName="fliterComboBox" dropdownWidth="200">
+										
+									</uicontrol:FliterComboBox>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemEditor>
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="物料编号"  dataField="codestr"  editable="false"  width="100" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="物料名称"  dataField="codename" editable="false"  width="100" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="物料规格"  dataField="codegg" editable="false"   width="100">
+						
+					</mx:AdvancedDataGridColumn>
+					<!--
+					<mx:AdvancedDataGridColumn headerText="物料编号"  dataField="code" editorDataField="data" editable="false" labelFunction="getCodeStr"  width="100" >
+					<mx:itemEditor>
+					<fx:Component>
+					<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+					<fx:Script>
+					<![CDATA[
+					import mx.collections.ArrayCollection;
+					import mx.controls.dataGridClasses.DataGridListData;
+					import mx.controls.listClasses.BaseListData;
+					import mx.core.INavigatorContent;
+					
+					import util.InfoUtil;
+					private var _listData:DataGridListData;
+					// Define a property for returning the new value to the cell.
+					[Bindable]
+					private var _value:Object;            
+					[Bindable]
+					private var list:ArrayCollection=new ArrayCollection();            
+					
+					// Implement the drawFocus() method for the VBox.
+					override public function drawFocus(draw:Boolean):void {
+					//											outerDocument.getMacAll();
+					//												refresh();
+					cbo.setFocus();
+					cbo.open();
+					
+					}
+					//											public function refresh():void{
+					//												if(_value.hasOwnProperty("ddbh")&&outerDocument.orderAndCodeMap.hasOwnProperty("ddbh"+_value.ddbh)){
+					//													list=outerDocument.orderAndCodeMap["ddbh"+_value.ddbh];
+					//													return;
+					//												}
+					//												list.removeAll();
+					//												if(!_value.hasOwnProperty("ddbh")||_value.ddbh==""||_value.code==null){
+					//													list.addAll(InfoUtil.codeList);
+					//													return;
+					//												}
+					//												var ddbh:String=",";
+					//												for each(var item:Object in InfoUtil.openOrderList){
+					//													if(_value.ddbh==item.ddbh){
+					//														if(ddbh.indexOf(","+item.code+",")==-1){
+					//															ddbh+=item.code+",";
+					//														}
+					//														
+					//													}else{
+					//														continue;
+					//													}
+					//													
+					//												}
+					//												for each(var obj:Object in InfoUtil.codeList){
+					//													if(ddbh.indexOf(","+obj.id+",")>-1){
+					//														list.addItem(obj);
+					//													}
+					//												}
+					//												
+					//												outerDocument.orderAndCodeMap["ddbh"+_value.ddbh]=list;
+					//												
+					//											}
+					
+					override public function get data():Object {
+					if(cbo==null){
+					return super.data;
+					}else{
+					if(cbo.selectedIndex==-1){
+					for each(var it:Object in cbo.dataProvider){
+					if(it[cbo.labelField]==cbo.data||it[cbo.valueField]==cbo.data){
+					return it[cbo.valueField]
+					}
+					}
+					return null;
+					}
+					return cbo.data;
+					}
+					}            
+					
+					override public function set data(value:Object):void {
+					cbo.setValue(value[_listData.dataField]);
+					super.data=value[_listData.dataField];
+					_value=value;
+					} 
+					
+					public function get listData():BaseListData
+					{
+					return _listData;
+					}
+					
+					public function set listData(value:BaseListData):void
+					{
+					_listData = DataGridListData(value);
+					cbo.listData = DataGridListData(value);
+					}
+					
+					public function changeCode():void{
+					if(cbo.selectedItem==null){
+					return;
+					}
+					
+					//												var f:Boolean=false;
+					//												var fl:Boolean=false;
+					//												for each(var item:Object in InfoUtil.openOrderList){
+					//													if(item.code==cbo.selectedItem.id&&item.ddbh==_value["ddbh"]){
+					//														_value["yorder"]=item.id;
+					//														f=true;
+					//													}
+					//													if(item.id==_value["zrorder"]){
+					//														if(item.code!=cbo.selectedItem.id){
+					//															_value["zrorder"]="";
+					//															fl=true;
+					//														}
+					//													}
+					//													if(f&&fl){
+					//														return;
+					//													}
+					//												}
+					//												_value['dj']=cbo.selectedItem.dj;
+					//												if(_value['num']==""){
+					//													_value['cz']=0
+					//												}else{
+					//													_value['cz']=cbo.selectedItem.dj*_value['num'];
+					//												}
+					
+					}
+					
+					]]>
+					</fx:Script>
+					<uicontrol:FliterComboBox id="cbo" dataProvider="{InfoUtil.codeList}" labelField="code" valueField="id" change="changeCode()" height="{this.height}" width="{this.width}" styleName="fliterComboBox" dropdownWidth="200">
+					
+					</uicontrol:FliterComboBox>
+					</mx:HBox>
+					</fx:Component>
+					</mx:itemEditor>
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="物料名称"  dataField="codename" labelFunction="getCodeNameStr"  editable="false"  width="100" >
+					
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="物料规格"  dataField="codegg" editable="false" labelFunction="getCodeGGStr"  width="100">
+					
+					</mx:AdvancedDataGridColumn>
+					-->
+					<mx:AdvancedDataGridColumn headerText="生产线"  dataField="scx"  editable="false" labelFunction="getScxStr"  width="90" >
+						
+					</mx:AdvancedDataGridColumn>
+					<mx:AdvancedDataGridColumn headerText="源作业单编号"  dataField="yzydh"   width="100" >
+						
+					</mx:AdvancedDataGridColumn>
+					
+					<mx:AdvancedDataGridColumnGroup headerText="源位置">
+						<mx:AdvancedDataGridColumn headerText="名称"  dataField="ywz"  editorDataField="data" labelFunction="getYWZStr" width="100"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+													cbo.open();
+													
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														if(cbo.selectedIndex==-1){
+															for each(var it:Object in cbo.dataProvider){
+																if(it[cbo.labelField]==cbo.data||it[cbo.valueField]==cbo.data){
+																	return it[cbo.valueField]
+																}
+															}
+															return null;
+														}
+														return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.setValue(value[_listData.dataField]);
+													super.data=value[_listData.dataField];
+													_value=value;
+													
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												public function changeCode():void{
+													if(cbo.selectedItem==null){
+														return;
+													}
+													
+													
+												}
+												
+											]]>
+										</fx:Script>
+										<uicontrol:FliterComboBox id="cbo" dataProvider="{InfoUtil.siteList}" labelField="name" valueField="id" change="changeCode()" height="{this.height}" width="{this.width}" styleName="fliterComboBox" dropdownWidth="200">
+											
+										</uicontrol:FliterComboBox>
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+						
+						<mx:AdvancedDataGridColumn headerText="数量"  dataField="ywznum" editorDataField="data"  width="60"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														return cbo.value;
+														//													return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.value=value[_listData.dataField];
+													super.data=value[_listData.dataField];
+													_value=value;
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												
+												
+											]]>
+										</fx:Script>
+										<mx:NumericStepper id="cbo" minimum="0" maximum="99999999999" value="0"  height="{this.height}" width="{this.width}"  /> 
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+					</mx:AdvancedDataGridColumnGroup>
+					<mx:AdvancedDataGridColumnGroup headerText="转入位置">
+						<mx:AdvancedDataGridColumn headerText="名称"  dataField="zrwz" editorDataField="data"  labelFunction="getZRWZStr" width="100"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+													cbo.open();
+													
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														if(cbo.selectedIndex==-1){
+															for each(var it:Object in cbo.dataProvider){
+																if(it[cbo.labelField]==cbo.data||it[cbo.valueField]==cbo.data){
+																	return it[cbo.valueField]
+																}
+															}
+															return null;
+														}
+														return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.setValue(value[_listData.dataField]);
+													super.data=value[_listData.dataField];
+													_value=value;
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												public function changeCode():void{
+													if(cbo.selectedItem==null){
+														return;
+													}
+													
+													
+												}
+												
+											]]>
+										</fx:Script>
+										<uicontrol:FliterComboBox id="cbo" dataProvider="{InfoUtil.siteList}" labelField="name" valueField="id" change="changeCode()" height="{this.height}" width="{this.width}" styleName="fliterComboBox" dropdownWidth="200">
+											
+										</uicontrol:FliterComboBox>
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+						<mx:AdvancedDataGridColumn headerText="订单编号"  dataField="zrddbh" editorDataField="data" labelFunction="getZRDDBHStr" width="100"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.collections.ArrayCollection;
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;  
+												
+												[Bindable]
+												private var list:ArrayCollection=new ArrayCollection();
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+													cbo.open();
+													
+												}
+												
+												public function refresh():void{
+													if(_value.hasOwnProperty("code")&&InfoUtil.codeToBHlistObj.hasOwnProperty("code"+_value.code)){
+														list=InfoUtil.codeToBHlistObj["code"+_value.code];
+														return;
+													}
+													list.removeAll();
+													var ddbh:String=",";
+													for each(var item:Object in InfoUtil.openOrderList){
+														if(!_value.hasOwnProperty("code")||_value.code==""||_value.code==null||_value.code==item.code){
+															if(ddbh.indexOf(","+item.ddbh+",")==-1){
+																list.addItem(item);
+															}
+															
+														}else{
+															continue;
+														}
+														ddbh+=item.ddbh+",";
+													}
+													InfoUtil.codeToBHlistObj["code"+_value.code]=list;
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														if(cbo.selectedIndex==-1){
+															for each(var it:Object in cbo.dataProvider){
+																if(it[cbo.labelField]==cbo.data||it[cbo.valueField]==cbo.data){
+																	return it[cbo.valueField]
+																}
+															}
+															return null;
+														}
+														return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													super.data=value[_listData.dataField];
+													_value=value;
+													changeFilterValue();
+													cbo.setValue(value[_listData.dataField]);
+													
+													//												
+//													changeFilterValue();
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												public function changeCode():void{
+													if(cbo.selectedItem==null){
+														return;
+													}
+
+												}
+												
+												public function changeFilterValue():void{
+													if(cbo.filtervalue!=_value.code){
+														cbo.filtervalue=_value.code;
+														refresh();
+													}
+												}
+												
+											]]>
+										</fx:Script>
+										<uicontrol:FliterComboBox id="cbo"  dataProvider="{list}"   labelField="ddbhstr" valueField="id" change="changeCode()" height="{this.height}" width="{this.width}" styleName="fliterComboBox" dropdownWidth="200">
+											
+										</uicontrol:FliterComboBox>
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+						<mx:AdvancedDataGridColumn headerText="数量"  dataField="zrwznum" editorDataField="data"  width="60"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														return cbo.value;
+														//													return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.value=value[_listData.dataField];
+													super.data=value[_listData.dataField];
+													_value=value;
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												
+											]]>
+										</fx:Script>
+										<mx:NumericStepper id="cbo" minimum="0" maximum="99999999999" value="0" height="{this.height}" width="{this.width}"  /> 
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+					</mx:AdvancedDataGridColumnGroup>
+					<mx:AdvancedDataGridColumnGroup headerText="异常">
+						
+						<mx:AdvancedDataGridColumn headerText="报废"  dataField="bfnum" editorDataField="data"  width="60"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														return cbo.value;
+														//													return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.value=value[_listData.dataField];
+													super.data=value[_listData.dataField];
+													_value=value;
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												
+											]]>
+										</fx:Script>
+										<mx:NumericStepper id="cbo" minimum="0" maximum="99999999999" value="0" height="{this.height}" width="{this.width}"  /> 
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+						<mx:AdvancedDataGridColumn headerText="遗失"  dataField="ysnum" editorDataField="data"  width="60"  >
+							<mx:itemEditor>
+								<fx:Component>
+									<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+										<fx:Script>
+											<![CDATA[
+												import mx.controls.dataGridClasses.DataGridListData;
+												import mx.controls.listClasses.BaseListData;
+												import mx.core.INavigatorContent;
+												
+												import util.InfoUtil;
+												private var _listData:DataGridListData;
+												// Define a property for returning the new value to the cell.
+												[Bindable]
+												private var _value:Object;            
+												
+												// Implement the drawFocus() method for the VBox.
+												override public function drawFocus(draw:Boolean):void {
+													//											outerDocument.getMacAll();
+													cbo.setFocus();
+												}
+												
+												override public function get data():Object {
+													if(cbo==null){
+														return super.data;
+													}else{
+														return cbo.value;
+														//													return cbo.data;
+													}
+												}            
+												
+												override public function set data(value:Object):void {
+													cbo.value=value[_listData.dataField];
+													super.data=value[_listData.dataField];
+													_value=value;
+												} 
+												
+												public function get listData():BaseListData
+												{
+													return _listData;
+												}
+												
+												public function set listData(value:BaseListData):void
+												{
+													_listData = DataGridListData(value);
+													cbo.listData = DataGridListData(value);
+												}
+												
+												
+											]]>
+										</fx:Script>
+										<mx:NumericStepper id="cbo" minimum="0" maximum="99999999999" value="0" height="{this.height}" width="{this.width}"  /> 
+									</mx:HBox>
+								</fx:Component>
+							</mx:itemEditor>
+						</mx:AdvancedDataGridColumn>
+					</mx:AdvancedDataGridColumnGroup>
+					<!--<mx:AdvancedDataGridColumn headerText="源位置剩余"  dataField="ywzsynum" editorDataField="data"  width="90"  >
+						<mx:itemEditor>
+							<fx:Component>
+								<mx:HBox implements="mx.controls.listClasses.IDropInListItemRenderer,mx.managers.IFocusManagerComponent">
+									<fx:Script>
+										<![CDATA[
+											import mx.controls.dataGridClasses.DataGridListData;
+											import mx.controls.listClasses.BaseListData;
+											import mx.core.INavigatorContent;
+											
+											import util.InfoUtil;
+											private var _listData:DataGridListData;
+											// Define a property for returning the new value to the cell.
+											[Bindable]
+											private var _value:Object;            
+											
+											// Implement the drawFocus() method for the VBox.
+											override public function drawFocus(draw:Boolean):void {
+												//											outerDocument.getMacAll();
+												cbo.setFocus();
+											}
+											
+											override public function get data():Object {
+												if(cbo==null){
+													return super.data;
+												}else{
+													return cbo.value;
+//													return cbo.data;
+												}
+											}            
+											
+											override public function set data(value:Object):void {
+												cbo.value=value[_listData.dataField];
+												super.data=value[_listData.dataField];
+												_value=value;
+											} 
+											
+											public function get listData():BaseListData
+											{
+												return _listData;
+											}
+											
+											public function set listData(value:BaseListData):void
+											{
+												_listData = DataGridListData(value);
+												cbo.listData = DataGridListData(value);
+											}
+											
+											
+										]]>
+									</fx:Script>
+									<mx:NumericStepper id="cbo" minimum="0" maximum="99999999999" value="0" height="{this.height}" width="{this.width}"  /> 
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemEditor>
+					</mx:AdvancedDataGridColumn>-->
+					
+					<mx:AdvancedDataGridColumn headerText="备注"  dataField="bztext"   width="60"  >
+						
+					</mx:AdvancedDataGridColumn>
+					
+				</uicontrol:groupedColumns>
+				
+			</uicontrol:MarkAdvancedDataGrid>
+			
+		</s:BorderContainer>
+	</s:HGroup>
+</control:CBorderContainer>

@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<control:CBorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:control="control.*" borderVisible="false" backgroundAlpha="0" width="900" height="300" xmlns:uicontrol="uicontrol.*" >
+	<control:layout>
+		<s:BasicLayout/>
+	</control:layout>
+	<fx:Script>
+		<![CDATA[
+			import events.CloseEvent;
+			
+			import httpcontrol.RemoteUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ListEvent;
+			import mx.formatters.DateFormatter;
+			import mx.rpc.AbstractOperation;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import util.InfoUtil;
+			[Bindable]
+			public var showLabel:String;
+			
+			override public function init(e:FlexEvent):void{
+//				orderlist=ObjectUtil.copy(InfoUtil.orderList) as ArrayCollection;
+//				orderbhlist=ObjectUtil.copy(InfoUtil.orderbhList) as ArrayCollection;
+				orderlist.removeAll();
+//				ordergrid.init(null);
+				datelr.selectedDate=new Date();
+				orderBBListRefresh();
+			}
+			
+			override public function closeContainer(e:CloseEvent):void{
+				dispatchEvent(e);
+				
+			}
+			public function getUserStr(item:Object, column:DataGridColumn):String{
+				for each(var obj:Object in InfoUtil.userList){
+					if(obj.id==item.user){
+						return obj.last_name+obj.first_name;
+					}
+				}
+				
+				return "";
+			}
+			
+//			public function getDDBHStr(item:Object, column:AdvancedDataGridColumn):String{
+//				
+////				return this.ddbh.text;
+//			}
+			
+			public function getDataStr(item:Object, column:AdvancedDataGridColumn):String{
+				if(item.createDate==""){
+					return "";
+				}
+				var date:Date=item.createDate;
+				return ""+date.fullYear+"/"+(date.month+1)+"/"+date.date;
+			}
+			public function getCodeStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						return obj.code;
+					}
+				}
+				return "";
+			}
+			public function getCodeNameStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						return obj.name;
+					}
+				}
+				return "";
+			}
+			public function getCodeGGStr(item:Object, column:AdvancedDataGridColumn):String{
+				for each(var obj:Object in InfoUtil.codeList){
+					if(obj.id==item.code){
+						return obj.gg;
+					}
+				}
+				return "";
+			}
+			
+			//新增，保存，删除的处理函数
+			private function clickHander(e:ItemClickEvent):void{
+				if(e.label=="查询"){
+					doflag=true;
+//					getOrderByBH();
+					
+				}
+				if(e.label=="新增"){
+					doflag=false;
+//					this.ddbh.text="";
+//					this.bzname.text="";
+//					this.orderlist.removeAll();
+//					this.ordergrid.init(null);
+//					this.orderbhgrid.selectedIndex=-1;
+				}
+				if(e.label=="保存"){
+					save();
+				}
+				if(e.label=="删除"){
+					del();
+				}
+				if(e.label=='同步数据'){
+					InfoUtil.orderbhRefresh();
+				}
+			}
+			
+			public function del():void{
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				var item:Object;
+				for(var i:int=orderlist.length-1;i>=0;i--){
+					item=orderlist.getItemAt(i);
+					if(!item.selected){
+						continue;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+						scxArr.addItem(obj);
+					}else{
+						orderlist.removeItemAt(orderlist.getItemIndex(item));
+					}
+					//					obj.name=item.name;
+					
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("delOrder");
+					op.addEventListener(ResultEvent.RESULT,refresh);
+					RemoteUtil.openLoading();
+					op.send(scxArr);
+				}
+			}
+			
+			
+			
+			public function save():void{
+				if(doflag){
+//					if(this.ddbh.text==""){
+//						Alert.show("请填写订单编号信息。","提示");
+//						return;
+//					}
+				}
+				var codeStr:String=",";
+				var scxArr:ArrayCollection=new ArrayCollection();
+				var obj:Object;
+				for each(var item:Object in orderlist){
+					if(!item.hasOwnProperty("isModfy")){
+						continue;
+					}
+					if(item.code==""||item.num==""||item.dj==""){
+						continue;
+					}
+					if(codeStr.indexOf(","+item.code+",")!=-1){
+						Alert.show("同一个订单中，不能出现两条一样的物料","提示");
+						return;
+					}
+					obj=new Object();
+					if(item.hasOwnProperty("id")){
+						obj.id=item.id;
+					}
+					obj.code=item.code;
+					obj.num=item.num;
+					obj.dj=item.dj;
+					scxArr.addItem(obj);
+					codeStr+=item.code+",";
+				}
+				if(scxArr.length>0){
+					var op:AbstractOperation=RemoteUtil.getOperation("saveOrder");
+					op.addEventListener(ResultEvent.RESULT,refresh);
+//					RemoteUtil.openLoading();
+//					op.send(scxArr,this.ddbh.text,this.bzname.text);
+				}
+				
+				
+			}
+			
+//			public function getOrderByBH(ddbh:String=null):void{
+//				if(orderbhgrid.selectedItem==null&&ddbh==null){
+//					Alert.show("提示","请选择一条订单。");
+//				}else{
+//					
+//					var operation:AbstractOperation=RemoteUtil.getOperation("getOrderByBH");
+//					operation.addEventListener(ResultEvent.RESULT, resultOrderByBH);
+//					
+//					RemoteUtil.openLoading();
+//					if(orderbhgrid.selectedItem!=null){
+//						operation.send(orderbhgrid.selectedItem.ddbh);
+//					}else{
+//						operation.send(ddbh);
+//					}
+//					
+//				}
+//			}
+			
+			public function resultOrderByBH(e:ResultEvent):void{
+				var result:Object=e.result;
+				if(result.success==true){
+//					orderlist.removeAll();
+//					orderlist.addAll(new ArrayCollection(result.result.list as Array));
+//					ordergrid.init(null);
+				}
+			}
+			
+			public function refresh(e:ResultEvent):void{
+				if(e.result.success){
+//					getOrderByBH(this.ddbh.text);
+				}
+			}
+			public function resultOrderBBListRefresh(e:ResultEvent):void{
+				if(e.result.success){
+					orderlist.removeAll();
+					orderlist.addAll(new ArrayCollection(e.result.result as Array));
+				}
+			}
+			
+			public function orderBBListRefresh():void{
+				var myDateFormatter:DateFormatter=new DateFormatter();
+				myDateFormatter.formatString="YYYYMMDD";
+				var op:AbstractOperation=RemoteUtil.getOperation("getOrderAllBBNo");
+				op.addEventListener(ResultEvent.RESULT,resultOrderBBListRefresh);
+				RemoteUtil.openLoading();
+				op.send(myDateFormatter.format(datelr.selectedDate),userlr.selected);
+			}
+			
+			public function getOrderBBList(e:ListEvent):void{
+				orderEdit.getOrderBBByLSH(lshgrid.selectedItem.lsh);
+			}
+			
+			[Bindable]
+			public var doflag:Boolean=false;
+			
+			[Bindable]
+			public var orderlist:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			[Embed("assets/img/toolbg.png")]
+			public var toolbgimg:Class;
+			[Bindable]
+			[Embed("assets/img/save.png")]
+			public var saveimg:Class;
+			[Bindable]
+			[Embed("assets/img/add.png")]
+			public var addimg:Class;
+			[Bindable]
+			[Embed("assets/img/del.png")]
+			public var delimg:Class;
+			[Bindable]
+			[Embed("assets/img/refresh.png")]
+			public var refreshimg:Class;
+			[Bindable]
+			private var buttonArr:ArrayCollection=new ArrayCollection([{'label':'查询','ico':addimg},{'label':'新增','ico':addimg},{'label':'保存','ico':saveimg},{'label':'删除','ico':delimg},{'label':'同步数据','ico':refreshimg}]);
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:HGroup top="8" right="8" bottom="8" left="8" gap="7">
+		<s:BorderContainer width="200" height="100%"  borderVisible="false" color="0x333333" skinClass="skins.contentBoxSkin">	
+			<s:layout>
+				<s:VerticalLayout gap="5">
+					
+				</s:VerticalLayout>
+			</s:layout>
+			<s:BorderContainer width="100%" height="55">
+				<s:layout>
+					<s:VerticalLayout gap="2" paddingLeft="5" paddingRight="5" paddingTop="5">
+						
+					</s:VerticalLayout>
+				</s:layout>
+				<mx:DateField id="datelr" width="100%" change="orderBBListRefresh()" enabled="false">
+					
+				</mx:DateField>
+				<s:CheckBox id="userlr" label="只显示我录入的" selected="false"  change="orderBBListRefresh()"/>
+			</s:BorderContainer>
+			<mx:DataGrid id="lshgrid" dataProvider="{orderlist}" doubleClickEnabled="true" itemDoubleClick="getOrderBBList(event)" width="100%" height="100%">
+				<mx:columns>
+					<mx:DataGridColumn dataField="lsh" headerText="流水号" >
+					</mx:DataGridColumn>
+					<mx:DataGridColumn dataField="user" headerText="录入员" labelFunction="getUserStr" width="60">
+					</mx:DataGridColumn>
+				</mx:columns>
+			</mx:DataGrid>
+		</s:BorderContainer>
+		<control:OrderBBEdit id="orderEdit" width="100%" height="100%">
+			
+		</control:OrderBBEdit>
+	</s:HGroup>
+</control:CBorderContainer>
